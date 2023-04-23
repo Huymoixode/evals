@@ -1,0 +1,75 @@
+import enchant
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import wordnet
+from nltk.sentiment import SentimentIntensityAnalyzer
+
+# Tạo một đối tượng từ điển với ngôn ngữ tiếng Anh
+d = enchant.Dict("en_US")
+
+# Đọc đoạn văn từ một tệp tin
+with open("text.txt", "r") as f:
+    text = f.read()
+
+# Tách các câu ra khỏi đoạn văn
+sentences = nltk.sent_tokenize(text)
+
+# Kiểm tra từng từ trong từng câu và đếm số lỗi chính tả
+errors = 0
+for sentence in sentences:
+    words = word_tokenize(sentence)
+    for word in words:
+        if not d.check(word):
+            errors += 1
+
+# Tính điểm độ đọc được của đoạn văn
+score = nltk.text.Text(text).reading_ease()
+
+# Tính điểm cảm xúc trung bình của đoạn văn
+sia = SentimentIntensityAnalyzer()
+sentiment = sia.polarity_scores(text)
+
+# Kiểm tra lỗi ngữ pháp và in ra danh sách các câu chứa lỗi
+grammar_errors = []
+for sentence in sentences:
+    grammar_errors += [error[2] for error in nltk.parse.util.incremental_parse(sentence, trace=2).trace(0).tree().productions() if str(error[0]) == 'False']
+
+if len(grammar_errors) > 0:
+    print(f"Found {len(grammar_errors)} grammar errors:")
+    for error in grammar_errors:
+        print(f"- {error}")
+
+# Tìm các từ không tồn tại trong từ điển và gợi ý các từ thay thế
+misspelled_words = []
+suggestions = {}
+for sentence in sentences:
+    words = word_tokenize(sentence)
+    for word in words:
+        if not d.check(word):
+            misspelled_words.append(word)
+            suggestions[word] = d.suggest(word)
+
+if len(misspelled_words) > 0:
+    print(f"Found {len(misspelled_words)} misspelled words:")
+    for word in misspelled_words:
+        print(f"- {word}: {suggestions[word]}")
+
+# Tìm các từ không đồng nghĩa và gợi ý các từ đồng nghĩa
+antonyms = {}
+for sentence in sentences:
+    words = word_tokenize(sentence)
+    for word in words:
+        synonyms = []
+        for syn in wordnet.synsets(word):
+            for lemma in syn.lemmas():
+                synonyms.append(lemma.name())
+                if lemma.antonyms():
+                    antonyms[word] = [antonym.name() for antonym in lemma.antonyms()]
+
+if len(antonyms) > 0:
+    print(f"Found {len(antonyms)} words with antonyms:")
+    for word in antonyms:
+        print(f"- {word}: {antonyms[word]}")
+
+# In ra các thông tin đánh giá
+print(f"\nNumber of
